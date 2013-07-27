@@ -22,7 +22,7 @@
 #ifndef PC_OS_MODEL_H
 #define PC_OS_MODEL_H
 
-#include <boost/detail/endian.hpp>
+//#include <boost/detail/endian.hpp>
 #include <stdint.h>
 #include <cassert>
 
