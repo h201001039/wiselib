@@ -44,7 +44,7 @@ class File
                 typedef BlockMemory_P BlockMemory;
                 unsigned long fptr; 		/* File R/W pointer */
                 unsigned long fsize;		/* File size */
-                unsigned long org_clust;	/* File start cluster */
+                 long org_clust;	/* File start cluster */
                 unsigned long curr_clust;	/* File current cluster */
                 unsigned long dsect; 		/* File current data sector */
                 unsigned char flag;			/* File status flags */
@@ -84,6 +84,14 @@ class File
 						src++;
 						}
 				}
+//-----------------------------------------------------------------------                       
+
+				int exist()
+				{
+					if(org_clust==-2)
+					return 0;
+					else return 1;
+					}
 
 //-------------------------------------------------------------------------------------
 				/* Compare memory to memory */
@@ -129,7 +137,7 @@ class File
  
                 unsigned int get_fat_entry(int N) 
                 {
-                        block_data_t *buffer1=0;
+                        block_data_t buffer1[512];
                 if(fat_type() == 16)
                         FATOffset = N * 2;
                 else if (fat_type() == 32)
@@ -137,14 +145,17 @@ class File
  
                  ThisFATSecNum = fatbase + (FATOffset / bps);
                  ThisFATEntOffset = FATOffset % bps;
-                 printf("ThisFATEntOffset=%d\n",ThisFATEntOffset);
+                 //printf("ThisFATSecNum=%d ThisFATEntOffset=%d\n",ThisFATSecNum,ThisFATEntOffset);
                 fd.read(buffer1,ThisFATSecNum); 
                 if(fat_type()==16)
                 return LD_SHORT(buffer1+ThisFATEntOffset);//change into word. eg 16 bit or 32 bit.
                 else if (fat_type() == 32)
+                {
+					//printf("%d\n",LD_INT(buffer1+ThisFATEntOffset) & 0x0FFFFFFF);
                 return  LD_INT(buffer1+ThisFATEntOffset) & 0x0FFFFFFF;
+			}
 		else 
-			return 0;			
+			return ERR_UNSPEC;			
 			}
 //-----------------------------------------------------------------------
 					long read (
@@ -162,34 +173,35 @@ class File
 					//printf("%ld\n",fptr);
 
 
-					printf("csize =%d fsize=%ld\n",csize,fsize);
+					//printf("csize =%d fsize=%ld\n",csize,fsize);
 					remain = fsize - fptr;
 					while(remain<=0)
 					return -2;
 					if (btr > remain) btr = (int)remain;			/* Truncate btr by remaining bytes */
-					printf("fptr=%ld btr=%d fsize=%ld org_clust=%ld\n",fptr,btr,fsize,org_clust);
+					//printf("fptr=%ld btr=%d fsize=%ld org_clust=%ld\n",fptr,btr,fsize,org_clust);
 					ret=btr;
 					//printf("%ld\n",bps);
-					while (btr)	{									
+					while (btr)	{
+							
 						if ((fptr % bps) == 0) {				
 							cs = (unsigned char)(fptr / bps & (csize - 1));	
 							if (!cs) {								
-								clst = (fptr == 0) ?			
-									org_clust : get_fat_entry(curr_clust);
-									printf("curr_clust=%d\n",clst);
+								clst = (fptr == 0) ? org_clust : get_fat_entry(curr_clust);
+									//printf("curr_clust=%d\n",clst);
 								if (clst <= 1) return ERR_UNSPEC;
-								curr_clust = clst;				
+								curr_clust = clst;
+								//printf("curr_clust=%d\n",clst);				
 							}
-							printf("curr_clust=%ld\n",curr_clust);
-							printf("fptr=%ld btr=%d fsize=%ld org_clust=%ld\n",fptr,btr,fsize,org_clust);
+						//	printf("curr_clust=%ld\n",curr_clust);
+						//	printf("fptr=%ld btr=%d fsize=%ld org_clust=%ld\n",fptr,btr,fsize,org_clust);
 							sect = first_sector_of_cluster(curr_clust);		
-							printf("sect=%ld\n",sect);
+						//	printf("sect=%ld\n",sect);
 							if (!sect) return ERR_UNSPEC;
 							dsect = sect + cs;
 						}
 						rcnt = (unsigned int)(bps - (fptr % bps));		
 						if (rcnt > btr) rcnt = btr;
-						printf("rcnt=%d\n",rcnt);
+						//printf("rcnt=%d\n",rcnt);
 						dr = fd.read(inter, dsect);
 						mem_set(buff,inter+(fptr%bps),rcnt);
 						//for(i=0;i<700;i++)
@@ -308,10 +320,31 @@ class SdFileSystemLibrary
 					while (cnt-- && (r = *d++ - *s++) == 0) ;
 					//printf("r=%d\n",r);
 					return r;
+					/*
+					int flag=0;
+				for(i=0;i<8;i++)
+				{
+					if(src[i]==' ')
+					{
+					flag=0;
+					break;
 				}
+					else if(dst[i]==src[i])
+					continue;
+					else if(dst[i]!=src[i])
+					{
+					flag=1;
+					break;
+				}
+					}
+				if(flag==0 && src[8]!=' ')
+				{
+					for(j=0;)
+					}
+				}
+*/
 
-
- 
+				}
 //-----------------------------------------------------------------------                       
 
 				/* length */
@@ -326,7 +359,72 @@ class SdFileSystemLibrary
 					}
 					return i;
 					}
+//-----------------------------------------------------------------------                       
+					char upper(char c) {
+					if (c >= 'a' && c <= 'z') {
+					return c + ('A' - 'a');
+					} else {
+					return c;
+					}
+					}
+//-----------------------------------------------------------------------                       					
+					char *mystrchr(const char *s, int c) {
+						while (*s != (char) c) {
+							if (!*s++) {
+								return NULL;
+							}
+						}
+						return (char *)s;
+					}
+//-----------------------------------------------------------------------                       
 
+					void tf_shorten_filename(char *dest,const char *src) {
+						//char *dest1=dest;
+					int i = 0;
+					while (1) {
+					if (i == 8)
+					break;
+					if ((i == 6) || (*src == '.') || (*src == '\x00'))
+					break;
+					if ((*dest == ' ')) {
+					
+						} 
+						else 
+						{
+					*(dest++) = upper(*(src++));
+					}
+					i += 1;
+					}
+					if (i == 6) {
+					*(dest++) = '~';
+					*(dest++) = '1';
+					i += 2;
+					}
+					else {
+					while (i < 8) {
+					*(dest++) = ' ';
+					i++;
+					}
+					}
+
+					
+					src = mystrchr(src, '.');
+
+					*(dest++) = ' ';
+					*(dest++) = ' ';
+					*(dest++) = ' ';
+					*(dest++) = '\x00';
+					dest -= 4;
+					if (src != NULL) {
+					src += 1;
+					while (i < 12) {
+					if (*src == '\x00')
+					break;
+					*(dest++) = upper(*(src++));
+					i += 1;
+					}
+					}
+					}
 //-------------------------------------------------------------------------------------
                 
 				void to_upper( char *src)
@@ -346,12 +444,21 @@ class SdFileSystemLibrary
 					}	
 				}
 //-------------------------------------------------------------------------------------
-                void init() {
+                int init( const char *image=NULL) {
+						
                         CountofClusters=0;
                         TotSec=0;
                         DataSec=0;
                         int i=0;
-                        fd.init("/home/mindfuck/test.img");
+                        if(image!=NULL)
+                        {
+                      
+                        i=fd.init(image);
+					}
+                        else
+                        i=fd.init();
+                        if(i==ERR_UNSPEC)
+                        return ERR_UNSPEC;
                         for(i=0;i<512;i++)
                         buffer[i]=0;
                          int a=fd.read(buffer,0);
@@ -367,56 +474,57 @@ class SdFileSystemLibrary
                         sclust=0;
                         b1.BPB_BytsPerSec=LD_INT(buffer+11);
                         bps=b1.BPB_BytsPerSec;
-                        printf("b1.BPB_BytsPerSec=%d\n",b1.BPB_BytsPerSec);
+                       // printf("b1.BPB_BytsPerSec=%d\n",b1.BPB_BytsPerSec);
                         b1.BPB_SecPerClus=buffer[13];
                         csize=b1.BPB_SecPerClus;
-                        printf("b1.BPB_SecPerClus=%d\n",b1.BPB_SecPerClus);
+                       // printf("b1.BPB_SecPerClus=%d\n",b1.BPB_SecPerClus);
                         b1.BPB_RsvdSecCnt=LD_INT(buffer+14);;
-                        printf("b1.BPB_RsvdSecCnt=%d\n",b1.BPB_RsvdSecCnt);
+                       // printf("b1.BPB_RsvdSecCnt=%d\n",b1.BPB_RsvdSecCnt);
                         fatbase=b1.BPB_RsvdSecCnt;
                         b1.BPB_NumFATs=buffer[16];
-                        printf("b1.BPB_NumFATs=%d\n",b1.BPB_NumFATs);
+                       // printf("b1.BPB_NumFATs=%d\n",b1.BPB_NumFATs);
                         b1.BPB_RootEntCnt=LD_INT(buffer+17);
                         n_rootdir=b1.BPB_RootEntCnt;
-                        printf("b1.BPB_RootEntCnt=%d\n",b1.BPB_RootEntCnt);
+                       // printf("b1.BPB_RootEntCnt=%d\n",b1.BPB_RootEntCnt);
                         b1.BPB_TotSec16=LD_INT(buffer+19);
-                        printf("b1.BPB_TotSec16=%d\n",b1.BPB_TotSec16);
+                       // printf("b1.BPB_TotSec16=%d\n",b1.BPB_TotSec16);
                         b1.BPB_FATSz16=LD_INT(buffer+22);
-                        printf("b1.BPB_FATSz16=%d\n",b1.BPB_FATSz16);
+                       // printf("b1.BPB_FATSz16=%d\n",b1.BPB_FATSz16);
                         b1.BPB_TotSec32=LD_INT(buffer+32);
-                        printf("b1.BPB_TotSec32=%d\n  ",b1.BPB_TotSec32);
+                       // printf("b1.BPB_TotSec32=%d\n  ",b1.BPB_TotSec32);
                         b3.BPB_FATSz32=LD_INT(buffer+36);
-                        printf("b3.BPB_FATSz32=%d\n ",b3.BPB_FATSz32);
+                       // printf("b3.BPB_FATSz32=%d\n ",b3.BPB_FATSz32);
                         b3.BPB_RootClus=LD_INT(buffer+44);
-                        printf("b3.BPB_RootClus=%ld\n",b3.BPB_RootClus);
+                       // printf("b3.BPB_RootClus=%ld\n",b3.BPB_RootClus);
                         if(b1.BPB_FATSz16 != 0)
                         FATSz = b1.BPB_FATSz16;
                         else
                         FATSz = b3.BPB_FATSz32;
-                        printf("FATSz=%d\n",FATSz);
+                       // printf("FATSz=%d\n",FATSz);
                         int totsec;
                         if(b1.BPB_TotSec16 != 0)
                         totsec = b1.BPB_TotSec16;
                         else
                         totsec = b1.BPB_TotSec32;
-                        printf("totsec=%d\n",totsec);
+                       // printf("totsec=%d\n",totsec);
                         RootDirSectors = ((b1.BPB_RootEntCnt * 32) + (b1.BPB_BytsPerSec - 1)) / b1.BPB_BytsPerSec;
-                        printf("RootDirSectors=%ld\n",RootDirSectors);
+                       // printf("RootDirSectors=%ld\n",RootDirSectors);
                         database=fatbase+(b1.BPB_NumFATs*FATSz)+RootDirSectors;
-                        printf("database=%ld\n",database);
+                       // printf("database=%ld\n",database);
                         DataSec = totsec - (fatbase + (b1.BPB_NumFATs * FATSz) + RootDirSectors);
-                        printf("DataSec=%ld\n",DataSec);
+                       // printf("DataSec=%ld\n",DataSec);
                         CountofClusters = DataSec / csize;
-                        printf("CountofClusters=%ld\n",CountofClusters);
+                       // printf("CountofClusters=%ld\n",CountofClusters);
                         n_fatent=CountofClusters;
                         if(fat_type()==16)
                         FirstRootDirSecNum = fatbase + (b1.BPB_NumFATs * FATSz);
                         else 
                         FirstRootDirSecNum = b3.BPB_RootClus;
                         dirbase=FirstRootDirSecNum;
-                        printf("FirstRootDirSecNum=%ld\n",FirstRootDirSecNum);
+                       // printf("FirstRootDirSecNum=%ld\n",FirstRootDirSecNum);
+                        return SUCCESS;
                         }
-                  
+                  else return ERR_UNSPEC;
                         }
 //-----------------------------------------------------------------------
                         //Given any valid data cluster number N, the sector number of 
@@ -519,13 +627,14 @@ class SdFileSystemLibrary
 					
 					//printf("harsh\n");
 					
-					int res,i,c;
+					int res,c,flag1=0;
 
 					res = dir_rewind();			/* Rewind directory object */
 					//printf("res=%d\n",res);
 				if (res != 1) return res;
 
 					do {
+						flag1=0;
 						res=fd.read(buffer2,sect);
 						if(res==ERR_UNSPEC)
 						return ERR_UNSPEC;
@@ -538,21 +647,23 @@ class SdFileSystemLibrary
 						res = dir_next();
 						continue;
 					}
-							for(i=0;i<11;i++)
-							printf("%c",dir1[i]);
-							printf("\n");
+							//for(i=0;i<11;i++)
+							//printf("%c",dir1[i]);
+							//printf("\n");
 							//break;
-							if(!mem_cmp(dir1, name, len))
+							if(!mem_cmp(dir1, name, 11))
 							{
-							for(i=0;i<5;i++)
-							printf("%c ",dir1[i]);
-							printf("\n");
+							//for(i=0;i<11;i++)
+							//printf("%c",dir1[i]);
+							//printf("\n");
+							flag1=1;
 							break;
 						}
 						res = dir_next();					/* Next entry */
 					} while (res == 1);
-
+					if(flag1==1)
 					return res;
+					else return -2;
 				}
 //--------------------------------------------------------------------------------
 				File<OsModel> open(const char* name)
@@ -560,25 +671,35 @@ class SdFileSystemLibrary
                 //search for the file in root entries and if found create file object 
                 //pointing to that clusture otherwise create new file and return file object
                 //pointing to new clusture
-				int i=0;
+				//int i=0;
+				int res;
 				char name1[15];
 				block_data_t buf;
-				int len1=len(name);
+				//int len1=len(name);
 				//block_data_t *dir;
-				while(*(name+i)!=0)
-				{
-				name1[i]=*(name+i);
-				i++;
-				}
-				name1[i]=0;
+				//while(*(name+i)!=0)
+				//{
+				//name1[i]=*(name+i);
+				//i++;
+				//}
+				tf_shorten_filename(name1,name);
+				//name1[i]=0;
 				dir1=&buf;
 				//printf("%s\n",name);
 				//printf("hello %s\n",name1);
-                to_upper(name1);
+                //to_upper(name1);
                 File<OsModel> f(name1,0, fd);
                 f.flag = 0;
                 					
-					dir_find(name1,len1);	
+					res=dir_find(name1,11);	
+					if(res==-2)
+					{
+						printf("res=%d\n",res);
+					//f.size=0;
+					f.org_clust=-2;
+					return f;
+				}
+					//printf("res=%d\n",res);
 					//dir =(buffer2+((index % 16) * 32));
 					//printf("buffer2=%u index=%ld\n",buffer2,index);
 					//if (res ==0 ) printf("res=%d\n",res);		
