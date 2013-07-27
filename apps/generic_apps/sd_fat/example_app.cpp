@@ -37,8 +37,8 @@ class ExampleApplication
  debug_->debug("reading %d from the file",len);
 //debug_->debug("%s",buffer);
 	for(i=0;i<len;i++)
-     printf("%c",buffer[i]);
-     printf("\n");
+     debug_->debug("%c",buffer[i]);
+     debug_->debug("\n");
  }
  else if(len==-2)
  debug_->debug("you are at end of the file");
@@ -49,8 +49,8 @@ len=x.read(buffer,1000);
  debug_->debug("reading %d from the file",len);
 //debug_->debug("%s",buffer);	
 	for(i=0;i<len;i++)
-     printf("%c",buffer[i]);
-     printf("\n");
+debug_->debug("%c",buffer[i]);
+     debug_->debug("\n");
      
 
  }
