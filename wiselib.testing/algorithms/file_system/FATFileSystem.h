@@ -606,7 +606,7 @@ class FATFileSystem
 				index = i;
 				return 1;
 				}
-				//----------------------------------------------------------------------------
+//----------------------------------------------------------------------------
 
 				/* Directory handling - Rewind directory index */
 				int dir_rewind ()
@@ -628,7 +628,7 @@ class FATFileSystem
 				return 1;
 				}
 
-				//-------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------
 				/* Directory handling - Find an object in the directory */
 
 				int dir_find (char *name,int len)
@@ -663,7 +663,7 @@ class FATFileSystem
 				return res;
 				else return -2;
 				}
-				//--------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------
 				File<OsModel> open(const char* name)
 				{
 				//search for the file in root entries and if found create file object
