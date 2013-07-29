@@ -8,7 +8,7 @@
 #include "external_interface/pc/pc_os_model.h"
 #include "external_interface/pc/pc_wiselib_application.h"
 #include "external_interface/external_interface.h"
-#include "algorithms/file_system/sd_filesys_lib.h"
+#include "algorithms/file_system/FATFileSystem.h"
 
 typedef wiselib::PCOsModel Os;
 typedef typename Os::block_data_t block_data_t;
@@ -25,9 +25,10 @@ class ExampleApplication
 
          debug_->debug( "Reading BIOS Stuff from SD card!" );
 		//typedef wiselib::ArduinoOsModel Os;
-		wiselib::SdFileSystemLibrary<Os> f;
-		f.init("/home/mindfuck/Downloads/disk.img");
-		wiselib::File<Os> x=f.open("vbox.log");
+		wiselib::FATFileSystem<Os> f;
+		f.init("/home/mindfuck/test.img");
+		wiselib::File<Os> x=f.open("harsh");
+		//f.delete_file("wooo");
 		
 		if(x.exist())
 		{
@@ -59,7 +60,11 @@ debug_->debug("%c",buffer[i]);
  }
  else
  debug_->debug("file dont exist\n");
+   		wiselib::File<Os> y=f.open("wooo");
+     if(!y.exist())
+     printf("your success is arrived\n");
      }
+     
       // --------------------------------------------------------------------
    private:
       Os::Debug::self_pointer_t debug_;
