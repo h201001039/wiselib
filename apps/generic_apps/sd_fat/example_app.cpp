@@ -48,10 +48,7 @@ class ExampleApplication
 		 }
 		 else
 		 debug_->debug("file dont exist\n");
-			wiselib::File<Os> y=f.open("wooo");
-			 if(!y.exist())
-			 printf("your success is arrived\n");
-			 }
+		  }
 			 
 			  // --------------------------------------------------------------------
 		   private:
