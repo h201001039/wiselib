@@ -12,7 +12,7 @@
 
 typedef wiselib::PCOsModel Os;
 typedef typename Os::block_data_t block_data_t;
-block_data_t buffer[1000];
+block_data_t buffer[5000];
 class ExampleApplication
 {
    public:
@@ -23,12 +23,15 @@ class ExampleApplication
 		debug_->debug( "Reading BIOS Stuff from SD card!" );
 		//typedef wiselib::ArduinoOsModel Os;
 		wiselib::FATFileSystem<Os> f;
-		f.init("/home/mindfuck/test.img");
+		f.init("/home/mindfuck/disk123.img");
+			//f.delete_file("harsh");
+			//	f.delete_file("wooo");
 		wiselib::File<Os> x=f.open("wooo");
-		//f.delete_file("wooo");
+		printf("FTYPE=%d\n",f.fat_type());
+	
 		if(x.exist())
 		{
-		len=x.read(buffer,1000);
+		len=x.read(buffer,5000);
 		if(len>0)
 		{
 		 debug_->debug("reading %d from the file\n",len);

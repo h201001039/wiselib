@@ -177,6 +177,7 @@ class File
 				cs = (unsigned char)(fptr / bps & (csize - 1));
 				if (!cs) {
 				clst = (fptr == 0) ? org_clust : get_fat_entry(curr_clust);
+				printf("clst=%d\n",clst);
 				if (clst <= 1) return ERR_UNSPEC;
 				curr_clust = clst;
 				}
@@ -527,7 +528,8 @@ class FATFileSystem
 						set_fat_entry(clust, 0) ;
 						clust = nxt;
 					}
-					if(get_fat_entry(clust) == 0)
+					printf("get_fat_entry(%d)=%d\n",clust,get_fat_entry(clust));
+					if(get_fat_entry(clust) == 0x0000)
 					set_fat_entry(clust, 0);
 					return SUCCESS;
 				}
@@ -616,6 +618,7 @@ class FATFileSystem
 
 				index = 0;
 				clst = sclust;
+				printf("clst=%ld\n",clst);
 				if (clst == 1 || clst >= n_fatent) /* Check start cluster range */
 				{
 				return ERR_UNSPEC;//change
@@ -625,6 +628,7 @@ class FATFileSystem
 				clst = (unsigned long)dirbase;
 				clust = clst; /* Current cluster */
 				sect = clst ? first_sector_of_cluster(clst) : dirbase; /* Current sector */
+				printf("clst=%ld\n",clst);
 				return 1;
 				}
 
@@ -633,8 +637,8 @@ class FATFileSystem
 
 				int dir_find (char *name,int len)
 				{
-
-				int res,c,flag1=0;
+				printf("Hi wooo\n");
+				int res,c,flag1=0,i;
 
 				res = dir_rewind(); /* Rewind directory object */
 				if (res != 1) return res;
@@ -645,15 +649,24 @@ class FATFileSystem
 				if(res==ERR_UNSPEC)
 				return ERR_UNSPEC;
 				dir1 =(buffer2+((index % 16) * 32));
+				//printf("dir1=%u\n",dir1);
 				c = dir1[0]; /* First character */
 				if (c == 0) { break; }
 				if(c==0xE5)
 				{
+				printf("c=%d\n",c);	
+				printf("continue\n");
 				res = dir_next();
 				continue;
 				}
+				
+				for(i=0;i<11;i++)
+				printf("%c",dir1[i]);
+				printf("\n");
+
 				if(!mem_cmp(dir1, name, 11))
 				{
+				printf("awesome\n");
 				flag1=1;
 				break;
 				}
@@ -694,21 +707,30 @@ class FATFileSystem
 //-----------------------------------------------------------------------
 				int delete_file(const char *name)
 				{
-					int res;
-				char name1[15];
+					int res,i;
+				char name12[15];
 				block_data_t buf;
 				unsigned int org_clustr;
-				tf_shorten_filename(name1,name);
+				tf_shorten_filename(name12,name);
 				dir1=&buf;								
-				res=dir_find(name1,11);
-				if(res==-2)
-				{
-				return ERR_UNSPEC;
-				}
+				res=dir_find(name12,11);
+				//if(res==-2)
+				//{
+				//return ERR_UNSPEC;
+				//}
+				printf("dir1=%u\n",dir1);
 				org_clustr = LD_CLUST(dir1);
-				
+				printf("org_clustr=%d\n",org_clustr);
 				remove_clust_chain(org_clustr);
-				(*(unsigned int*)(dir1))=0;
+				*(dir1)=0;
+				*(dir1+1)=0;
+				*(dir1+2)=0;
+				*(dir1+3)=0;
+				
+				for(i=0;i<32;i++)
+				printf("%d",dir1[i]);
+				printf("\n");
+				printf("hello dude\n");
 				return SUCCESS;
 				}
 
