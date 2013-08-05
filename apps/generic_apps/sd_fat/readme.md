@@ -20,7 +20,7 @@ A file object referring to the opened file.
 
 <h3>-> f_read()</h3>
 
-<h4>Description<h4>
+<h4>Description</h4>
 
 read a file on SD card. User can read a file if he/she opens a file in read mode.
 
@@ -31,3 +31,47 @@ len=x.f_read(buffer,len1); // buffer is the block_data_t array in which data fro
 <h4>Returns</h4>
 
 Number of bytes read by the method
+
+<h3>-> f_write()</h3>
+
+<h4>Description</h4>
+
+write a file on SD card. User can read a file if he/she opens a file in write mode.
+
+<h4>Syntax</h4>
+
+len=x.f_write(buffer,len1); // buffer is the block_data_t array in which data is there which will get written in file. 
+len1 is length user want to write.
+
+<h4>Returns</h4>
+
+Number of bytes written by the method
+
+<h3>-> f_delete()</h3>
+
+<h4>Description</h4>
+
+delete a file on SD card if the file exist otherwise return ERR_UNSPEC.
+
+<h4>Syntax</h4>
+
+res=f.delete_file(file_name); // file_name is the name of the file user wants to delete.
+
+<h4>Returns</h4>
+
+Return SUCCESS if file exist in SD card is get deleted, otherwise return ERR_UNSPEC.
+
+<h3>-> seek()</h3>
+
+<h4>Description</h4>
+
+Seek to a new position in the file, which must be between 0 and the size of the file (inclusive). 
+
+<h4>Syntax</h4>
+
+len=x.seek(value); // seek the file pointer to a specific value between 0 and file_size.
+
+<h4>Returns</h4>
+
+Return SUCCESS if value is between 0 to file_size. other wise seek function will return ERR_UNSPEC.
+
