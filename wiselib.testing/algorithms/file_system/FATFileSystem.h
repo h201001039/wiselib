@@ -959,7 +959,7 @@
 					}
 	
 	//--------------------------------------------------------------------------------
-					File<OsModel> open( const char* name, int mode)
+					File<OsModel> open( const char* name, int mode=0)
 					{
 					//search for the file in root entries and if found create file object
 					//pointing to that clusture otherwise create new file and return file object
