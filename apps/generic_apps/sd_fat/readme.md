@@ -75,7 +75,6 @@ len=x.seek(value); // seek the file pointer to a specific value between 0 and fi
 
 Return SUCCESS if value is between 0 to file_size. Other wise seek function will return ERR_UNSPEC.
 
-
 <h3>-> close()</h3>
 
 <h4>Description</h4>
@@ -90,12 +89,69 @@ a.f_close(); //where a is File object.
 
 Return SUCCESS if file closes successfully. Other wise seek function will return ERR_UNSPEC.
 
+<h3>-> exist()</h3>
+
+<h4>Description</h4>
+
+Tests whether a file exists on the SD card. 
+
+<h4>Syntax</h4>
+
+f.exist(); //where f is FATFileSystem object.
+
+<h4>Returns</h4>
+
+Return true if file exists otherwise return false.
+
+<h3>-> position()</h3>
+
+<h4>Description</h4>
+
+Get the current position within the file
+
+<h4>Syntax</h4>
+
+x.position() //where x is File object.
+
+<h4>Returns</h4>
+
+Return the position within the file (unsigned long) .
+
+<h3>-> available()</h3>
+
+<h4>Description</h4>
+
+Check if there are any bytes available for reading from the file. 
+
+<h4>Syntax</h4>
+
+x.available() //where x is File object.
+
+<h4>Returns</h4>
+
+Return true if bytes available for reading otherwise false.
+
+<h3>-> size()</h3>
+
+<h4>Description</h4>
+
+Get the size of the file.
+
+<h4>Syntax</h4>
+
+x.size() //where x is File object.
+
+<h4>Returns</h4>
+
+the size of the file in bytes (unsigned long).
 
 <h3>-> fat_type()</h3>
 
 <h4>Description</h4>
 
-Give the information about the FAT file system in SD card, whether it is 16 bit or 32 bit.
+Give the information about the 
+
+FAT file system in SD card, whether it is 16 bit or 32 bit.
 
 <h4>Syntax</h4>
 
