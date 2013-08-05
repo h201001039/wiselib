@@ -54,7 +54,7 @@ class ExampleApplication
 		if(x.exist())
 		{
 		len=x.read(buffer1,103);
-		printf("hello harsh len=%d\n",len);
+		debug_->debug("hello harsh len=%d\n",len);
 		if(len>0)
 		{
 			for(i=0;i<len;i++)
@@ -63,11 +63,13 @@ class ExampleApplication
 				}
 				printf("\n");
 		 debug_->debug("reading %d from the file\n",len);
-			 debug_->debug("%s\n",buffer1);
+			// debug_->debug("%s\n",buffer1);
 		 }
 		 else if(len==-2)
 		 debug_->debug("you are at end of the file\n");
+		
 		len=x.seek(210);
+		 debug_->debug("seeking to 210\n");
 		if(len==-1)
 		debug_->debug("you are seeking to a ptr which is greater than file size or less than 0\n");
 		len=x.read(buffer1,200);
