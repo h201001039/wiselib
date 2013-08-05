@@ -33,27 +33,27 @@ class ExampleApplication
 			//else
 			//debug_->debug("file you want to delete does not exist\n");
 		wiselib::File<Os> a=f.open("soa.txt",1);
-		len1=a.write(buffer,50);
+		len1=a.f_write(buffer,50);
 		if(len1<0)
 		debug_->debug("error in writing\n");
-		a.write(buffer,50);
+		a.f_write(buffer,50);
 		if(len1<0)
 		debug_->debug("error in writing\n");
-		a.write(buffer,50);
+		a.f_write(buffer,50);
 		if(len1<0)
 		debug_->debug("error in writing\n");		
-		a.write(buffer,50);
+		a.f_write(buffer,50);
 		if(len1<0)
 		debug_->debug("error in writing\n");
-		a.write(buffer,50);
+		a.f_write(buffer,50);
 		if(len1<0)
 		debug_->debug("error in writing\n");
-		a.close();
+		a.f_close();
 		wiselib::File<Os> x=f.open("soa.txt",0);
 		printf("FTYPE=%d\n",f.fat_type());	
 		if(x.exist())
 		{
-		len=x.read(buffer1,103);
+		len=x.f_read(buffer1,103);
 		debug_->debug("hello harsh len=%d\n",len);
 		if(len>0)
 		{
@@ -72,7 +72,7 @@ class ExampleApplication
 		 debug_->debug("seeking to 210\n");
 		if(len==-1)
 		debug_->debug("you are seeking to a ptr which is greater than file size or less than 0\n");
-		len=x.read(buffer1,200);
+		len=x.f_read(buffer1,200);
 		if(len>0)
 		{
 
