@@ -49,10 +49,15 @@ class ExampleApplication
 		if(len1<0)
 		debug_->debug("error in writing\n");
 		a.f_close();
-		wiselib::File<Os> x=f.open("soa.txt",0);
-		printf("FTYPE=%d\n",f.fat_type());	
-		if(x.exist())
+		if(f.exist("soas.txt"))
+		debug_->debug("file exists\n");
+		else 
+		debug_->debug("file not exists\n");
+		if(f.exist("soa.txt"))
 		{
+		wiselib::File<Os> x=f.open("soa.txt",0);
+		debug_->debug("FTYPE=%d\n",f.fat_type());	
+		debug_->debug("size of file=%ld\n",x.size());
 		len=x.f_read(buffer1,103);
 		debug_->debug("hello harsh len=%d\n",len);
 		if(len>0)
@@ -68,8 +73,13 @@ class ExampleApplication
 		 else if(len==-2)
 		 debug_->debug("you are at end of the file\n");
 		
-		len=x.seek(210);
+		len=x.seek(250);
 		 debug_->debug("seeking to 210\n");
+		debug_->debug("position of fptr is=%ld\n",x.position());
+		if(x.available())
+		debug_->debug("there is available data to read\n");
+		else
+		debug_->debug("there is no available data to read\n");
 		if(len==-1)
 		debug_->debug("you are seeking to a ptr which is greater than file size or less than 0\n");
 		len=x.f_read(buffer1,200);
