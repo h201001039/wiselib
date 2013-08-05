@@ -7,6 +7,11 @@
 #define LD_LONG(ptr) (unsigned long)(*(unsigned long*)(unsigned char*)(ptr))
 #define LD_SHORT(ptr) (unsigned short)(*(unsigned short*)(unsigned char*)(ptr))
 #define LD_CLUST(dir) LD_SHORT(dir+26)
+#define	ST_SHORT(ptr,val)	*(unsigned char*)(ptr)=(unsigned char)(val); *((unsigned char*)(ptr)+1)=(unsigned char)((unsigned short)(val)>>8)
+#define	ST_INT(ptr,val)	*(unsigned char*)(ptr)=(unsigned char)(val); *((unsigned char*)(ptr)+1)=(unsigned char)((unsigned short)(val)>>8); *((unsigned char*)(ptr)+2)=(unsigned char)((unsigned int)(val)>>16); *((unsigned char*)(ptr)+3)=(unsigned char)((unsigned int)(val)>>24)
+//#define	ST_SHORT(ptr,val)	*(unsigned short*)(unsigned char*)(ptr)=(unsigned short)(val)
+//#define	ST_INT(ptr,val)	*(unsigned int*)(unsigned char*)(ptr)=(unsigned int)(val)
+
 #ifndef __SD_FILE_SYSTEM_LIBRARY_H__
 #define __SD_FILE_SYSTEM_LIBRARY_H__
 //#include "pc_os_model.h"
@@ -49,7 +54,9 @@ class File
                 unsigned long curr_clust; 	/* File current cluster */
                 unsigned long dsect; 		/* File current data sector */
                 unsigned char flag; 		/* File status flags */
-                
+                unsigned int sect3;
+                block_data_t *buffer4;
+                block_data_t *dir3;
                 enum {
 					SUCCESS = OsModel::SUCCESS,
 					ERR_UNSPEC = OsModel::ERR_UNSPEC
@@ -136,7 +143,7 @@ class File
  
                 unsigned int get_fat_entry(int N)
                 {
-                        block_data_t buffer1[512];
+                   block_data_t buffer123[512];
                 if(fat_type() == 16)
                         FATOffset = N * 2;
                 else if (fat_type() == 32)
@@ -144,17 +151,122 @@ class File
  
                  ThisFATSecNum = fatbase + (FATOffset / bps);
                  ThisFATEntOffset = FATOffset % bps;
-                fd.read(buffer1,ThisFATSecNum);
+                //printf("buffer123=%u\n",buffer123);
+                fd.read(buffer123,ThisFATSecNum); 
+                //printf("buffer123=%u\n",buffer123);
                 if(fat_type()==16)
-                return LD_SHORT(buffer1+ThisFATEntOffset);//change into word. eg 16 bit.
+                return LD_SHORT(buffer123+ThisFATEntOffset);//change into word. eg 16 bit or 32 bit.
                 else if (fat_type() == 32)
                 {
-                return LD_INT(buffer1+ThisFATEntOffset) & 0x0FFFFFFF;//change into word. eg 32 bit.
-				}
-				else
-				return ERR_UNSPEC;
-				}
+                return  LD_INT(buffer123+ThisFATEntOffset) & 0x0FFFFFFF;
+			}
+		else 
+			return ERR_UNSPEC;	
 //-----------------------------------------------------------------------
+                }
+                void set_fat_entry(int N,unsigned int value)
+                {
+					block_data_t buffer12[512];
+					if(fat_type() == 16)
+                        FATOffset = N * 2;
+					else if (fat_type() == 32)
+                        FATOffset = N * 4;
+				//printf("buffer12====%u\n",buffer12);
+                 ThisFATSecNum = fatbase + (FATOffset / bps);
+                 ThisFATEntOffset = FATOffset % bps;
+                fd.read(buffer12,ThisFATSecNum);
+                //buffer12= ThisFATSecNum;
+                //printf("buffer12====%u\n",buffer12);
+                if(fat_type()==16)
+                {
+                //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] &0x0000;
+                //buffer12[ThisFATEntOffset+1]=buffer12[ThisFATEntOffset+1] &0x0000;
+                //buffer12[ThisFATEntOffset]=value;
+                //buffer12[ThisFATEntOffset+1]=value>>8;
+                //*(unsigned short*)(unsigned char*)(buffer12+ThisFATEntOffset)=(unsigned short)(value);
+                ST_SHORT(buffer12+ThisFATEntOffset,value);
+               // printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
+                fd.write(buffer12,ThisFATSecNum);
+				fd.read(buffer12,ThisFATSecNum);
+			//	printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
+				
+			}
+                else if (fat_type() == 32)
+                {
+					value=value& 0x0FFFFFFF;
+					//printf("%d\n",LD_INT(buffer12+ThisFATEntOffset) & 0x0FFFFFFF);
+				*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)=*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)&0xF0000000;
+                //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] &0xF0;
+                *(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)=*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)|value;
+                //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] | value;
+				//buffer12[ThisFATEntOffset+1]=buffer12[ThisFATEntOffset+1] | value>>8;
+				//buffer12[ThisFATEntOffset+2]=buffer12[ThisFATEntOffset+2] | value>>16;
+				//buffer12[ThisFATEntOffset+3]=buffer12[ThisFATEntOffset+3] | value>>24;
+				fd.write(buffer12,ThisFATSecNum);
+			}
+			
+				fd.write(buffer12,ThisFATSecNum);
+
+                }
+                
+//----------------------------------------------------------------------------   
+				int remove_clust_chain (
+					unsigned int clust			/* Cluster# to remove chain from */
+				)
+				{
+					unsigned int nxt;
+
+					while ((nxt = get_fat_entry(clust)) >= 2) {
+						//printf("get_fat_entry(%d)=%d\n",clust,get_fat_entry(clust));
+						set_fat_entry(clust, 0) ;
+						clust = nxt;
+					}
+					//printf("get_fat_entry(%d)=%d\n",clust,get_fat_entry(clust));
+					if(get_fat_entry(clust) == 0x0000)
+					set_fat_entry(clust, 0);
+					return SUCCESS;
+				}
+//----------------------------------------------------------------------------
+				/* Stretch or Create a Cluster Chain */
+
+				
+				unsigned int create_clust_chain (
+					unsigned int clust			 /* Cluster# to stretch, 0 means create new */
+				)
+				{
+					unsigned int ncl, ccl, mcl =max_clust;
+
+
+					if (clust == 0) {	/* Create new chain */
+						ncl = 1;
+						do {
+							ncl++;						
+							if (ncl >= mcl) return 0;	
+							ccl = get_fat_entry(ncl);		
+							if (ccl == 1) return 0;		
+						} while (ccl);				
+					}
+					else {				
+						ncl = get_fat_entry(clust);	
+						if (ncl < 2) return 0;		
+						if (ncl < mcl) return ncl;	
+						ncl = clust;				
+						do {
+							ncl++;						
+							if (ncl >= mcl) ncl = 2;	
+							if (ncl == clust) return 0;	
+							ccl = get_fat_entry(ncl);	
+							if (ccl == 1) return 0;		
+						} while (ccl);				
+					}
+
+					set_fat_entry(ncl, 0xFFFFFFFF);		
+					set_fat_entry(clust, ncl);	
+
+					return ncl;
+				}
+
+//----------------------------------------------------------------------------
 				long read (
 				block_data_t* buff,
 				int btr
@@ -166,25 +278,33 @@ class File
 				int rcnt,ret;
 				block_data_t cs;
 				block_data_t inter[bps];
+				//printf("fsize=%ld,fptr=%ld\n",fsize,fptr);
+				//fptr=0;
 				remain = fsize - fptr;
 				while(remain<=0)
 				return -2;
 				if (btr > remain) btr = (int)remain; /* Truncate btr by remaining bytes */
 				ret=btr;
-				while (btr) {
-
+				while (btr) 
+				{
+				//printf("hello dude\n");
+				//printf("fptr=%ld\n",fptr);
 				if ((fptr % bps) == 0) {			/* On the sector boundary? */
 				cs = (unsigned char)(fptr / bps & (csize - 1));
+				//printf("cs=%ld\n",cs);
 				if (!cs) {
 				clst = (fptr == 0) ? org_clust : get_fat_entry(curr_clust);
-				printf("clst=%d\n",clst);
+				//printf("clst in read=%d\n",clst);
+				//printf("clst=%d\n",clst);
 				if (clst <= 1) return ERR_UNSPEC;
 				curr_clust = clst;
 				}
 				sect = first_sector_of_cluster(curr_clust);
+				//printf("sect in read=%ld\n",sect);
 				if (!sect) return ERR_UNSPEC;
 				dsect = sect + cs;
 				}
+				//printf("dsect=%ld\n",dsect);
 				rcnt = (unsigned int)(bps - (fptr % bps));
 				if (rcnt > btr) rcnt = btr;
 				dr = fd.read(inter, dsect);
@@ -196,8 +316,107 @@ class File
 				*buff=0;
 				return ret;
 				}
+//----------------------------------------------------------------------------------------
+
+unsigned long write (
+	block_data_t *buff,	
+	unsigned long btw	
+)
+{
+	//FATFileSystem<OsModel> fat();
+	unsigned int sect1_clust=1,i,ret1;
+	unsigned long clust;
+	unsigned int sect=dsect;
+	unsigned short wcnt;
+	block_data_t cc;
+	block_data_t buffer5[512];
+	//FATFS *fs = FatFs;
+	//printf("btw=%ld\n",btw);
+	fsize=fsize+btw;
+	ret1=btw;
+	//printf("\n");
+	//for(i=0;i<32;i++)
+	//printf("%c ",dir3[i]);
+	//printf("\n");
+	ST_INT(dir3+28, fsize);
+	//printf("\n");
+	//for(i=0;i<32;i++)
+	//printf("%x ",dir3[i]);
+	printf(" ");
+	//fd.write(buffer4,sect3);
+	if (fsize + btw < fsize) btw = 0;			
+	
+	for ( ;  btw;buff += wcnt, fptr += wcnt,  btw -= wcnt) {
+			//printf("fptr=%ld\n",fptr);
+		if ((fptr & 511) == 0) {
+			//printf("HELLO FPTR=0\n");							/* On the sector boundary */
+			if (--(sect1_clust)) {				
+				sect = dsect + 1;				
+			} else {								
+				if (fptr == 0) {				/* Top of the file */
+				
+					clust = org_clust;
+					if (clust == 0)					
+						org_clust = clust = create_clust_chain(0);	
+					//			printf("CLUST=%ld\n",clust);
+				} else {							
+					clust = create_clust_chain(curr_clust);		
+				}
+				if ((clust < 2) || (clust >= max_clust)) break;
+				curr_clust = clust;				
+				sect = first_sector_of_cluster(clust);			
+						//	printf("sect=%ld\n",sect);
+				sect1_clust = csize;	
+			}
+			dsect = sect;					
+			cc = btw / 512;							
+			//printf("cc=%ld\n",cc);
+			if (cc) {								
+				if (cc > sect1_clust) cc = sect1_clust;
+				for(i=cc;i>0;i--)
+				{
+				 fd.write(buff, sect); 
+				sect++;
+				}
+				sect1_clust -= cc - 1;
+				dsect += cc - 1;
+				wcnt = cc * 512; 
+				//printf("wcnt=%ld\n",wcnt);
+				continue;
+				
+			}
+			if ((fptr < fsize))  			
+				fd.read(buffer5, sect);
+		}
+		wcnt = 512 - (fptr & 511);				
+		if (wcnt > btw) wcnt = btw;
+		mem_set(&buffer5[fptr & 511], buff, wcnt);
+				fd.write(buffer5,sect);
+
+	}
+					ST_SHORT(dir3+26,org_clust);
+					fd.write(buffer4,sect3);
+					return ret1;
+
+}
+//----------------------------------------------------------------------------------------
+		int close()
+		{
+		fptr=0;	
+		return SUCCESS;
+		} 
 
 //----------------------------------------------------------------------------------------
+		int seek(unsigned int val)
+		{
+			if(val>fsize || val<0)
+			return ERR_UNSPEC;
+		else fptr=val;	
+		return SUCCESS;
+		} 
+
+//----------------------------------------------------------------------------------------
+
         private:
                 char name_[13];
                 int file_open_mode;
@@ -425,7 +644,7 @@ class FATFileSystem
                         sclust=0;
                         b1.BPB_BytsPerSec=LD_INT(buffer+11);
                         bps=b1.BPB_BytsPerSec;
-                        //printf("bps=%d\n",bps);
+                      //  printf("bps=%d\n",bps);
                         b1.BPB_SecPerClus=buffer[13];
                         csize=b1.BPB_SecPerClus;
                         b1.BPB_RsvdSecCnt=LD_INT(buffer+14);;
@@ -483,7 +702,7 @@ class FATFileSystem
                  ThisFATSecNum = fatbase + (FATOffset / bps);
                  ThisFATEntOffset = FATOffset % bps;
                 //printf("buffer123=%u\n",buffer123);
-                fd.read(buffer123,ThisFATSecNum); 
+                fd.read(buffer123,ThisFATSecNum);
                 //printf("buffer123=%u\n",buffer123);
                 if(fat_type()==16)
                 return LD_SHORT(buffer123+ThisFATEntOffset);//change into word. eg 16 bit or 32 bit.
@@ -512,23 +731,27 @@ class FATFileSystem
                 {
                 //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] &0x0000;
                 //buffer12[ThisFATEntOffset+1]=buffer12[ThisFATEntOffset+1] &0x0000;
-                buffer12[ThisFATEntOffset]=value;
-                buffer12[ThisFATEntOffset+1]=value>>8;
-                //printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
+                //buffer12[ThisFATEntOffset]=value;
+                //buffer12[ThisFATEntOffset+1]=value>>8;
+                //*(unsigned short*)(unsigned char*)(buffer12+ThisFATEntOffset)=(unsigned short)(value);
+                ST_SHORT(buffer12+ThisFATEntOffset,value);
+                printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
                 fd.write(buffer12,ThisFATSecNum);
 				fd.read(buffer12,ThisFATSecNum);
-				//printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
+				printf("buffer12[ThisFATEntOffset]=%d\n",buffer12[ThisFATEntOffset]);
 				
 			}
                 else if (fat_type() == 32)
                 {
 					value=value& 0x0FFFFFFF;
-					printf("%d\n",LD_INT(buffer12+ThisFATEntOffset) & 0x0FFFFFFF);
-                buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] &0xF0;
-                buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] | value;
-				buffer12[ThisFATEntOffset+1]=buffer12[ThisFATEntOffset+1] | value>>8;
-				buffer12[ThisFATEntOffset+2]=buffer12[ThisFATEntOffset+2] | value>>16;
-				buffer12[ThisFATEntOffset+3]=buffer12[ThisFATEntOffset+3] | value>>24;
+					//printf("%d\n",LD_INT(buffer12+ThisFATEntOffset) & 0x0FFFFFFF);
+				*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)=*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)&0xF0000000;
+                //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] &0xF0;
+                *(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)=*(unsigned int*)(unsigned char*)(buffer12+ThisFATEntOffset)|value;
+                //buffer12[ThisFATEntOffset]=buffer12[ThisFATEntOffset] | value;
+				//buffer12[ThisFATEntOffset+1]=buffer12[ThisFATEntOffset+1] | value>>8;
+				//buffer12[ThisFATEntOffset+2]=buffer12[ThisFATEntOffset+2] | value>>16;
+				//buffer12[ThisFATEntOffset+3]=buffer12[ThisFATEntOffset+3] | value>>24;
 				fd.write(buffer12,ThisFATSecNum);
 			}
 			
@@ -544,6 +767,7 @@ class FATFileSystem
 					unsigned int nxt;
 
 					while ((nxt = get_fat_entry(clust)) >= 2) {
+						//printf("get_fat_entry(%d)=%d\n",clust,get_fat_entry(clust));
 						set_fat_entry(clust, 0) ;
 						clust = nxt;
 					}
@@ -686,7 +910,7 @@ class FATFileSystem
 				//printf("%c",dir1[i]);
 				//printf("\n");
 
-				if(!mem_cmp(dir1, name, 4))
+				if(!mem_cmp(dir1, name, 11))
 				{
 				//printf("awesome\n");
 				flag1=1;
@@ -698,24 +922,62 @@ class FATFileSystem
 				return res;
 				else return -2;
 				}
+
 //--------------------------------------------------------------------------------
-				File<OsModel> open( const char* name)
+//-------------------------------------------------------------------------------------
+				/* Directory handling - Find an object in the directory */
+
+				int find_free_entry()
+				{
+				//printf("Hi wooo\n");
+				int res,c;
+
+				res = dir_rewind(); /* Rewind directory object */
+				//printf("res=%d\n",res);
+				if (res != 1) return res;
+
+				do {
+				//printf("sect in find=%ld\n",sect);
+				res=fd.read(buffer2,sect);
+				//printf("buffer2=%u\n",buffer2);
+				if(res==ERR_UNSPEC)
+				return ERR_UNSPEC;
+				dir1 =(buffer2+((index % 16) * 32));
+				//printf("dir1=%u\n",dir1);
+				c = dir1[0]; /* First character */
+				if (c == 0) { return 1; }
+				if(c==0xE5)
+				{
+				//printf("c=%d\n",c);	
+				//printf("continue\n");
+				return 1;
+				}
+				
+				res = dir_next(); /* Next entry */
+				} while (res == 1);
+				return -2;
+				}
+
+//--------------------------------------------------------------------------------
+				File<OsModel> open( const char* name, int mode)
 				{
 				//search for the file in root entries and if found create file object
 				//pointing to that clusture otherwise create new file and return file object
 				//pointing to new clusture
 				//int i=0;
-				int res;
+				int res,res1,i;
 				char name1[15]="gffgggfgfgf";
 				block_data_t buf;
 				tf_shorten_filename(name1,name);
+				File<OsModel> f(name1,0, fd);
+				if(mode==0)
+				{
+				
 				//for(i=0;i<15;i++)
 				//printf("%c",name1[i]);
 				//printf("\n");
 				dir1=&buf;
-				File<OsModel> f(name1,0, fd);
 				f.flag = 0;
-								
 				res=dir_find(name1,11);
 				if(res==-2)
 				{
@@ -724,16 +986,68 @@ class FATFileSystem
 				return f;
 				}
 				f.org_clust = LD_CLUST(dir1);
-				printf("f.org_clust=%ld",f.org_clust);
+				//printf("f.org_clust=%ld",f.org_clust);
 				f.fsize = LD_INT(dir1+28);
 				f.fptr = 0;
 				f.flag = 1;
                 return f;
+				}
+				else if(mode==1)
+				{
+				//tf_shorten_filename(name1,name);
+				dir1=&buf;
+				//File<OsModel> f(name1,0, fd);
+				f.flag = 1;
+				res=dir_find(name1,11);
+				if(res==-2)
+				{
+				res1=find_free_entry();
+				if(res1==1)
+				{
+				for(i=0;i<11;i++)
+				*(dir1+i)=name1[i];
+				*(dir1+i)=15;
+				ST_INT(dir1+28, 0);
+				ST_SHORT(dir1+26,0);
+				fd.write(buffer2,sect);
+				f.buffer4=buffer2;
+				f.dir3=dir1;
+				f.sect3=sect;
+				f.org_clust = LD_CLUST(dir1);
+				f.fsize = LD_INT(dir1+28);
+				f.fptr = 0;
+				f.flag = 1;
+                return f;
+				}
+				else f.org_clust=-3;
+				}
+				else
+				{
+				ST_INT(dir1+28, 0);
+				ST_SHORT(dir1+26,0);
+				fd.write(buffer2,sect);
+				f.buffer4=buffer2;
+				f.dir3=dir1;
+				f.sect3=sect;
+				f.org_clust = LD_CLUST(dir1);
+				f.fsize = LD_INT(dir1+28);
+				f.fptr = 0;
+				f.flag = 1;
+                return f;
+				}
+				return f;
+				}
+				else 
+				{
+				//File<OsModel> f(name1,0, fd);
+				f.flag = 0;
+				return f;	
+				}
                 }
 //-----------------------------------------------------------------------
 				int delete_file( const char *name)
 				{
-					int res;
+					int i,res;
 				char name12[15]="gffgggfgfgf";
 				block_data_t buf;
 				block_data_t buf1[512];
@@ -753,21 +1067,22 @@ class FATFileSystem
 				//printf("org_clustr=%d\n",org_clustr);
 				remove_clust_chain(org_clustr);
 				fd.read(buf1,sect);
-				*(dir1)=0xE5;
+				//*(dir1)=0xE5;
 				//*(dir1+1)=0;
 				//*(dir1+2)=0;
 				//*(dir1+3)=0;
 				//fd.read(buf12,sect);
-				*(buf1+((index % 16) * 32))=0xE5;
+				//*(buf1+((index % 16) * 32))=0xE5;
+				ST_INT((buf1+((index % 16) * 32)),0XE5);
 				//*((buf12+((index % 16) * 32))+1)=0;
 				//printf("sect in delete=%ld\n",sect);
 				fd.write(buf1,sect);
-				//fd.read(buf1,sect);
-				//dir1=buf1+((index % 16) * 32);
-				//for(i=0;i<32;i++)
-				//printf("%d",dir1[i]);
-				//printf("\n");
-				//printf("hello dude\n");
+				fd.read(buf1,sect);
+				dir1=buf1+((index % 16) * 32);
+				for(i=0;i<32;i++)
+				printf("%d",*(dir1+i));
+				printf("\n");
+				printf("hello dude\n");
 				return SUCCESS;
 				}
 
