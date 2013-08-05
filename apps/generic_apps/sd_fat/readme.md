@@ -73,5 +73,33 @@ len=x.seek(value); // seek the file pointer to a specific value between 0 and fi
 
 <h4>Returns</h4>
 
-Return SUCCESS if value is between 0 to file_size. other wise seek function will return ERR_UNSPEC.
+Return SUCCESS if value is between 0 to file_size. Other wise seek function will return ERR_UNSPEC.
 
+
+<h3>-> close()</h3>
+
+<h4>Description</h4>
+
+Close the file
+
+<h4>Syntax</h4>
+
+a.f_close(); //where a is File object.
+
+<h4>Returns</h4>
+
+Return SUCCESS if file closes successfully. Other wise seek function will return ERR_UNSPEC.
+
+
+<h3>-> fat_type()</h3>
+
+<h4>Description</h4>
+
+Give the information about the FAT file system in SD card, whether it is 16 bit or 32 bit.
+
+<h4>Syntax</h4>
+
+val=f.fat_type() //f is the FATFileSystem object.
+
+<h4>Returns</h4>
+Returns 16 if the FAT type is 16 bit , return 32 if FAT type is 32 bit.
