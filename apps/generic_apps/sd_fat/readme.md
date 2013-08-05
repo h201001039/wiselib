@@ -12,7 +12,9 @@ it will treated read mode by default.
 Syntax
 
 wiselib::File<Os> x=f.open("soa.txt"); 	 // open file in read mode.
+
 wiselib::File<Os> x=f.open("soa.txt",0); // open file in read mode.
+
 wiselib::File<Os> x=f.open("soa.txt",1); // open file in write mode.
 
 Returns
